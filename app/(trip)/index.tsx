@@ -1,54 +1,53 @@
 import {SafeAreaView} from "react-native-safe-area-context";
-import {ActivityIndicator, Text, View} from "react-native";
-import {Suspense} from "react";
+import {useDeferredValue, useMemo, useState, useTransition} from "react";
+import {FlatList, TextInput, Text} from "react-native";
+
+function slowFilter(text: string) {
+    const result: string[] = [];
+    for (let i = 0; i < 1500; i++) {
+        result.push(`${text} - item ${i}`);
+    }
+    return result;
+}
 
 const MyTripList = () => {
-    let userInfo: { name: String; email: String } | null = null;
-    let userPromise: Promise<void> | null = null;
+    const [textValue, setInputValue] = useState("");
+    // const [items, setItems] = useState<string[]>([]);
+    // const [isPending, startTransition] = useTransition();
+    const deferredText = useDeferredValue(textValue);
 
-    function fetchUser() {
-        return new Promise(resolve => {
-            setTimeout(() => {
-                userInfo = {
-                    name: 'bullets',
-                    email: 'jy.ryu.jiyoung@gmail.com',
-                };
-                resolve();
-            }, 2000)
-        })
-    }
+    // const handleChange = (value: string) => {
+    //     setInputValue(value);
+    //     startTransition(() => {
+    //         setItems(slowFilter(value));
+    //     });
+    // };
 
-    function useUser() {
-        if (userInfo) {
-            return userInfo;
-        }
-        if (!userPromise) {
-            userPromise = fetchUser();
-        }
+    const items = useMemo(() => {
+        if (!deferredText) return [];
+        return slowFilter(deferredText);
+    }, [deferredText])
 
-        throw userPromise;
-    }
-
-    function UserProfile() {
-        const user = useUser();
-        return (
-            <View>
-                <Text>{user.name}</Text>
-                <Text>{user.email}</Text>
-            </View>
-        )
-    }
+    const isPending = textValue !== deferredText;
 
     return (
-        <Suspense fallback={
-            <View style={{flex: 1, justifyContent: 'center'}}>
-                <ActivityIndicator size="large"/>
-            </View>
-        }>
-            <SafeAreaView>
-                <UserProfile/>
-            </SafeAreaView>
-        </Suspense>
+        <SafeAreaView>
+            <TextInput
+                value={textValue}
+                onChangeText={setInputValue}
+                style={{borderWidth: 1, height: 50}}
+            />
+            {isPending && (
+                <Text style={{color: "grey"}}>리스트 업데이트 중...</Text>
+            )}
+            <FlatList
+                data={items}
+                keyExtractor={(item) => item}
+                renderItem={({item}) => (
+                    <Text style={{opacity: isPending ? 0.5 : 1}}>{item}</Text>
+                )}
+            />
+        </SafeAreaView>
     );
 };
 
